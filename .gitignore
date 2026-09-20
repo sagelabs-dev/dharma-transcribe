@@ -11,6 +11,8 @@ output/manifest.json
 __pycache__/
 *.pyc
 .env
+.env.with-llm
+.env.*
 models/
 logs/
 tests/test_e2e_llm.py

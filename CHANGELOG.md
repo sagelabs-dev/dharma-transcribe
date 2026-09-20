@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+## [0.1.1] - 2026-09-20
+
+### Fixed
+- **Stage 4 (diarization) no longer hangs.** Two root causes, both fixed and
+  verified on production (4-session Kongokai series, zero hangs):
+  - Guard against pyannote `StatsPool` divide-by-zero on single-frame
+    segments (upstream pyannote-audio#1861; our `pyannote_compat.py` shim
+    intercepts only the degenerate branch).
+  - Fix `multiprocessing.Queue` deadlock in the Stage-4 subprocess wrapper:
+    the child blocked in `queue.put()` on results larger than the OS pipe
+    buffer while the parent waited in `proc.join()` without draining. The
+    queue is now drained while waiting; the result always lands.
+- **Stage 4 subprocess watchdog**: hard timeout (`DHARMA_DIARIZE_TIMEOUT`,
+  default 3600s) so a stalled diarization pass can never freeze a run
+  indefinitely.
+- **Stage 6 (LLM correction) treats an unconfigured LLM as disabled**
+  instead of attempting (and warning on) every segment: missing
+  `DHARMA_LLM_API_URL` / `DHARMA_LLM_API_KEY` now skips the stage cleanly
+  in one line. Previously produced one "API error on segment" warning per
+  chunk (6,868 warnings in one production run, zero corrections).
+
+### Added
+
 - GitHub Actions CI pipeline (lint, typecheck, test on Python 3.10/3.11/3.12)
 - PyPI publishing workflow (trusted publishing via OIDC)
 - Pre-commit hooks configuration (ruff + mypy)
