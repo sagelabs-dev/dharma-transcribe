@@ -122,7 +122,14 @@ def test_api_label_from_url(monkeypatch):
 
 
 def test_llm_correct_transcript_no_config(monkeypatch):
-    """Should raise RuntimeError when LLM is not configured."""
+    """Unconfigured LLM = stage DISABLED: clean skip, transcript untouched.
+
+    Historical behavior (the bug this asserts against): the stage gate only
+    checked the --skip-llm CLI flag, so an unconfigured env sailed into the
+    stage and every segment logged an 'API error on segment' warning
+    (6,868 warnings in one production run, zero corrections). The stage now
+    treats missing config as disabled and returns the transcript untouched.
+    """
     monkeypatch.setattr(llm_correct, "LLM_API_URL", "")
     monkeypatch.setattr(llm_correct, "LLM_API_KEY", "")
     monkeypatch.setattr(llm_correct, "LLM_MODEL", "")
@@ -130,11 +137,10 @@ def test_llm_correct_transcript_no_config(monkeypatch):
     llm_correct._client = None
 
     transcript = {"segments": [{"text": "Some teaching text here."}]}
-    # The _get_client should raise, but correct_segment catches exceptions
     result = llm_correct.llm_correct_transcript(transcript)
-    # The error should be logged in the segment, not raised
-    assert "llm_correction" in result
-    assert result["llm_correction"]["errors"] >= 1
+    assert result is transcript  # untouched — stage skipped, not failed
+    assert "llm_correction" not in result
+    assert "llm_corrected" not in result["segments"][0]
 
 
 def test_llm_correct_transcript_empty_segments():

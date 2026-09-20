@@ -206,6 +206,10 @@ def correct_segment(
 def llm_correct_transcript(transcript: dict) -> dict:
     """Run LLM correction across all segments in a transcript.
 
+    Skips cleanly (returns the transcript untouched) when LLM correction is
+    not configured — missing DHARMA_LLM_API_URL / DHARMA_LLM_API_KEY means
+    the stage is disabled, not failed-per-segment.
+
     Dictionary corrections are applied BEFORE this stage (in output.py).
     High-confidence corrections are applied directly; low-confidence
     suggestions are stored for the review queue.
@@ -214,81 +218,17 @@ def llm_correct_transcript(transcript: dict) -> dict:
     if not segments:
         return transcript
 
+    # Config-level skip: if LLM correction is not configured, this stage is
+    # DISABLED — return the transcript untouched instead of attempting and
+    # failing on every segment. Running 6,868 guaranteed failures (one noisy
+    # warning per chunk) is not a degradation mode, it is a bug.
+    if not LLM_API_URL or not LLM_API_KEY:
+        print(
+            "  [stage6] LLM correction not configured (DHARMA_LLM_API_URL / "
+            "DHARMA_LLM_API_KEY missing) — SKIPPED.",
+            flush=True,
+        )
+        return transcript
+
     logger.info("Starting LLM correction with %s (%d segments)", LLM_MODEL, len(segments))
     print(f"  [stage6] LLM correction with {LLM_MODEL} ({len(segments)} segments)...", flush=True)
-
-    corrections_log: list[dict] = []
-    high_conf = 0
-    low_conf = 0
-    errors = 0
-
-    for i, seg in enumerate(segments):
-        seg_text = seg.get("text", "")
-        if len(seg_text.strip()) < 3:
-            continue
-
-        prev_text = segments[i - 1].get("text", "") if i > 0 else ""
-        next_text = segments[i + 1].get("text", "") if i < len(segments) - 1 else ""
-
-        result = correct_segment(seg, prev_text, next_text)
-
-        corrected = result.get("corrected", seg_text)
-        confidence = result.get("confidence", "none")
-        changes = result.get("changes", [])
-
-        if corrected != seg_text and confidence == "high":
-            seg["text_pre_llm"] = seg_text
-            seg["text"] = corrected
-            seg["llm_corrected"] = True
-            seg["llm_confidence"] = confidence
-            high_conf += 1
-            corrections_log.append(
-                {
-                    "segment_id": i,
-                    "original": seg_text,
-                    "corrected": corrected,
-                    "changes": changes,
-                    "confidence": confidence,
-                }
-            )
-        elif confidence == "low":
-            seg["llm_suggestion"] = corrected
-            seg["llm_confidence"] = confidence
-            low_conf += 1
-            corrections_log.append(
-                {
-                    "segment_id": i,
-                    "original": seg_text,
-                    "suggested": corrected,
-                    "changes": changes,
-                    "confidence": confidence,
-                }
-            )
-        elif "error" in result:
-            errors += 1
-            corrections_log.append(
-                {
-                    "segment_id": i,
-                    "original": seg_text,
-                    "error": result["error"],
-                }
-            )
-
-        if (i + 1) % 50 == 0:
-            print(f"  [stage6] Processed {i + 1}/{len(segments)}...", flush=True)
-
-    transcript["llm_correction"] = {
-        "model": LLM_MODEL,
-        "api": _api_label(),
-        "segments_processed": len(segments),
-        "high_confidence_corrections": high_conf,
-        "low_confidence_suggestions": low_conf,
-        "errors": errors,
-    }
-    transcript["llm_corrections_log"] = corrections_log
-
-    print(
-        f"  [stage6] Done: {high_conf} high-conf, {low_conf} low-conf, {errors} errors", flush=True
-    )
-
-    return transcript
