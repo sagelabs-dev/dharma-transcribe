@@ -16,6 +16,8 @@ Defence in depth
 """
 
 import multiprocessing as mp
+import time
+from queue import Empty
 
 from . import config
 from .gpu import flush_gpu, vram_free_mb
@@ -61,6 +63,11 @@ def diarize_transcript(transcript: dict, wav_path: str, hf_token: str) -> dict:
     and the transcript is returned un-diarized, so a pyannote hang costs
     the timeout window rather than the entire run.
 
+    The parent DRAINS the result queue while waiting rather than blocking in
+    ``join()``: the child returns a pickled DataFrame that can exceed the OS
+    pipe buffer, and a parent blocked in ``join()`` would deadlock against a
+    child blocked in ``queue.put``.
+
     Args:
         transcript: Transcript dict with ``segments`` from earlier stages.
         wav_path: Path to the extracted WAV used for all audio stages.
@@ -91,38 +98,61 @@ def diarize_transcript(transcript: dict, wav_path: str, hf_token: str) -> dict:
         args=(wav_path, hf_token, config.DEVICE, queue),
     )
     proc.start()
-    proc.join(timeout)
+
+    # --- Drain-while-waiting ------------------------------------------------
+    # Do NOT call proc.join() first. The child returns its result via
+    # ``queue.put``; a diarization DataFrame for a long recording pickles to
+    # well over the OS pipe buffer (~64KB), so the child's feeder thread
+    # blocks in put() until someone reads. If the parent blocks in join()
+    # instead of draining, both sides wait on each other forever and the
+    # computed result is lost. Draining concurrently is what makes the
+    # watchdog safe to use.
+    status: str | None = None
+    payload = None
+    deadline = time.monotonic() + timeout
+
+    while True:
+        try:
+            status, payload = queue.get(timeout=1.0)
+            break
+        except Empty:
+            if not proc.is_alive():
+                # Child exited; give the feeder a last moment to flush.
+                try:
+                    status, payload = queue.get(timeout=5.0)
+                except Empty:
+                    pass
+                break
+            if time.monotonic() >= deadline:
+                break
+
+    proc.join(timeout=10)
 
     # --- Timeout path: kill the hung worker, keep the transcript ---
-    if proc.is_alive():
-        proc.terminate()
-        proc.join(10)
+    if status is None:
         if proc.is_alive():
-            proc.kill()
-            proc.join()
-        print(
-            f"  [stage4] Diarization TIMED OUT after {timeout}s — killed. "
-            "Transcript left un-diarized.",
-            flush=True,
-        )
+            proc.terminate()
+            proc.join(10)
+            if proc.is_alive():
+                proc.kill()
+                proc.join()
+            print(
+                f"  [stage4] Diarization TIMED OUT after {timeout}s — killed. "
+                "Transcript left un-diarized.",
+                flush=True,
+            )
+            transcript["diarize_note"] = f"timeout after {timeout}s"
+        else:
+            print(
+                "  [stage4] Diarization subprocess exited without a result "
+                f"(exit code {proc.exitcode}) — transcript left un-diarized.",
+                flush=True,
+            )
+            transcript["diarize_note"] = f"subprocess exit {proc.exitcode}"
+
         transcript["diarized"] = False
-        transcript["diarize_note"] = f"timeout after {timeout}s"
         flush_gpu()
         return transcript
-
-    # --- Crash-without-result path ---
-    if queue.empty():
-        print(
-            "  [stage4] Diarization subprocess exited without a result "
-            f"(exit code {proc.exitcode}) — transcript left un-diarized.",
-            flush=True,
-        )
-        transcript["diarized"] = False
-        transcript["diarize_note"] = f"subprocess exit {proc.exitcode}"
-        flush_gpu()
-        return transcript
-
-    status, payload = queue.get()
 
     if status != "ok":
         print(f"  [stage4] Diarization failed: {payload}", flush=True)
