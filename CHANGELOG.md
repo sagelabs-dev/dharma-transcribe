@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.1.2] - 2026-09-23
+
+### Security
+- Supersedes 0.1.1, whose sdist carried a host identifier in
+  `scripts/run_batch.sh`. Removed the host-specific reference.
+- Packaging metadata now carries the project's legal author identity.
+
 ## [0.1.1] - 2026-09-20
 
 ### Fixed

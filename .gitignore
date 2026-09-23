@@ -25,3 +25,4 @@ build_anki_deck.py
 
 # Serena agent state (session memories, local project config)
 .serena/
+dist/
