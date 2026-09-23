@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "David Newman & Guan" },
+    { name = "David Newman & Guan", email = "david.r.newman@proton.me" },
 ]
 keywords = [
     "transcription", "whisper", "whisperx", "tibetan", "sanskrit",
