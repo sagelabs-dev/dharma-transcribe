@@ -4,6 +4,8 @@ A headless multilingual transcription pipeline designed for Buddhist dharma teac
 
 **Privacy-first**: all processing runs locally. Sacred content never touches a cloud unless you explicitly configure LLM correction with a cloud API.
 
+**Version 0.1.2** — see [CHANGELOG.md](CHANGELOG.md) for release history.
+
 ## Architecture — 7 Stages
 
 ```
