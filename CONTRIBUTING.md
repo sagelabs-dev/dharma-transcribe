@@ -3,7 +3,7 @@
 ## Development Setup
 
 ```bash
-git clone https://github.com/guan-tends/dharma-transcribe.git
+git clone https://github.com/sagelabs-dev/dharma-transcribe.git
 cd dharma-transcribe
 python3 -m venv venv
 source venv/bin/activate

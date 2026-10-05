@@ -51,8 +51,8 @@ dev = [
 dharma-transcribe = "dharma_transcribe.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/guan-tends/dharma-transcribe"
-Repository = "https://github.com/guan-tends/dharma-transcribe"
+Homepage = "https://github.com/sagelabs-dev/dharma-transcribe"
+Repository = "https://github.com/sagelabs-dev/dharma-transcribe"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dharma_transcribe"]

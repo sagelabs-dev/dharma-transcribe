@@ -37,7 +37,7 @@ Stages run serially with GPU memory flushing between each — designed for 6 GB 
 
 ```bash
 # Clone
-git clone https://github.com/guan-tends/dharma-transcribe.git
+git clone https://github.com/sagelabs-dev/dharma-transcribe.git
 cd dharma-transcribe
 
 # Create virtual environment
