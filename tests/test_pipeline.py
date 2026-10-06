@@ -116,19 +116,19 @@ def test_process_file_full_pipeline(tmp_path, monkeypatch):
         ) as mock_t,
         patch(
             "dharma_transcribe.pipeline.align_transcript", side_effect=track_stage("align", None)
-        ) as mock_a,
+        ),
         patch(
             "dharma_transcribe.pipeline.diarize_transcript",
             side_effect=track_stage("diarize", None),
-        ) as mock_d,
+        ),
         patch(
             "dharma_transcribe.pipeline.tibetan_second_pass",
             side_effect=track_stage("tibetan", None),
-        ) as mock_ts,
+        ),
         patch(
             "dharma_transcribe.pipeline.llm_correct_transcript",
             side_effect=track_stage("llm", None),
-        ) as mock_llm,
+        ),
         patch(
             "dharma_transcribe.pipeline.generate_all_outputs",
             return_value={"json": "/tmp/out.json"},

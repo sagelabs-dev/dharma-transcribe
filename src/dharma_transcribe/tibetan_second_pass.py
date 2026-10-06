@@ -1,5 +1,7 @@
 """Stage 5: Tibetan second-pass transcription using OpenPecha model."""
 
+from typing import cast
+
 import numpy as np
 import torch
 import torchaudio
@@ -14,7 +16,7 @@ def _slice_audio(wav_path: str, start: float, end: float) -> np.ndarray:
     waveform, sample_rate = torchaudio.load(wav_path)
     start_sample = int(start * sample_rate)
     end_sample = int(end * sample_rate)
-    return waveform[:, start_sample:end_sample].numpy()
+    return cast("np.ndarray", waveform[:, start_sample:end_sample].numpy())
 
 
 def tibetan_second_pass(transcript: dict, wav_path: str) -> dict:
@@ -108,7 +110,8 @@ def tibetan_second_pass(transcript: dict, wav_path: str) -> dict:
     }
 
     print(
-        f"  [stage5] Second pass complete: {corrections_made} corrections out of {len(bo_segments)} segments",
+        f"  [stage5] Second pass complete: {corrections_made} corrections "
+        f"out of {len(bo_segments)} segments",
         flush=True,
     )
 

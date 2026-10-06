@@ -39,9 +39,9 @@ class TestDegenerateFrameCase:
             warnings.simplefilter("always")
             module(torch.zeros(1, 2560, 1))
 
-        assert not any(
-            "degrees of freedom" in str(w.message) for w in caught
-        ), "degenerate frame case still produces the reduction warning"
+        assert not any("degrees of freedom" in str(w.message) for w in caught), (
+            "degenerate frame case still produces the reduction warning"
+        )
 
     def test_single_frame_is_finite(self, stats_pool):
         """The guard must yield finite values, not NaN (NaN is what hangs pyannote)."""
@@ -96,9 +96,9 @@ class TestNormalCasesUnchanged:
             warnings.simplefilter("always")
             module(torch.randn(1, 32, 50))
 
-        assert not any(
-            "degrees of freedom" in str(w.message) for w in caught
-        ), "normal input unexpectedly warns"
+        assert not any("degrees of freedom" in str(w.message) for w in caught), (
+            "normal input unexpectedly warns"
+        )
 
 
 class TestApplyPatch:

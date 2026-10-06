@@ -113,5 +113,7 @@ def apply_patch() -> bool:
 
     _ORIGINAL_FORWARD = StatsPool.forward
     setattr(_guarded_forward, _PATCH_MARKER, True)
-    StatsPool.forward = _guarded_forward
+    # Monkey-patching the method IS this module's purpose (a compat shim);
+    # mypy's method-assign check does not apply here.
+    StatsPool.forward = _guarded_forward  # type: ignore[method-assign]
     return True

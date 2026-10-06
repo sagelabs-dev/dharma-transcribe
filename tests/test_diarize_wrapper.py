@@ -26,8 +26,8 @@ import pytest
 from dharma_transcribe import config
 from dharma_transcribe.diarize import diarize_transcript
 
-
 # --- Module-level workers (picklable by reference under spawn) --------------
+
 
 def _big_payload_worker(queue, nbytes: int) -> None:
     """Put a payload larger than the pipe buffer, then return."""
@@ -114,9 +114,7 @@ class TestWrapperDegradation:
 
     def test_stuck_worker_times_out_and_degrades(self, monkeypatch):
         """A child that never returns must be killed, not waited on forever."""
-        monkeypatch.setattr(
-            "dharma_transcribe.diarize._diarize_worker", _hang_worker
-        )
+        monkeypatch.setattr("dharma_transcribe.diarize._diarize_worker", _hang_worker)
         monkeypatch.setattr(config, "DIARIZE_TIMEOUT_SEC", 3)
 
         started = time.monotonic()
@@ -129,9 +127,7 @@ class TestWrapperDegradation:
 
     def test_child_error_is_reported_not_raised(self, monkeypatch):
         """A child failure must degrade to diarized=False, not crash the run."""
-        monkeypatch.setattr(
-            "dharma_transcribe.diarize._diarize_worker", _error_worker
-        )
+        monkeypatch.setattr("dharma_transcribe.diarize._diarize_worker", _error_worker)
 
         out = diarize_transcript(_simple_transcript(), "/dev/null", "fake-token")
 

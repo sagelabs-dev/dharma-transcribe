@@ -15,6 +15,7 @@ Defence in depth
    2026-08-23/24, had no such bound).
 """
 
+import contextlib
 import multiprocessing as mp
 import time
 from queue import Empty
@@ -118,10 +119,8 @@ def diarize_transcript(transcript: dict, wav_path: str, hf_token: str) -> dict:
         except Empty:
             if not proc.is_alive():
                 # Child exited; give the feeder a last moment to flush.
-                try:
+                with contextlib.suppress(Empty):
                     status, payload = queue.get(timeout=5.0)
-                except Empty:
-                    pass
                 break
             if time.monotonic() >= deadline:
                 break
@@ -169,11 +168,7 @@ def diarize_transcript(transcript: dict, wav_path: str, hf_token: str) -> dict:
 
         transcript = assign_word_speakers(diarize_df, transcript)
 
-        speakers = {
-            seg.get("speaker")
-            for seg in transcript["segments"]
-            if seg.get("speaker")
-        }
+        speakers = {seg.get("speaker") for seg in transcript["segments"] if seg.get("speaker")}
         transcript["speaker_count"] = len(speakers)
         transcript["diarized"] = True
 

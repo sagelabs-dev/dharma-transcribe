@@ -3,10 +3,13 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 from .config import (
-    CORRECTIONS_DIR,
     CONFIDENCE_THRESHOLD,
+    # Re-exported for tests: tests monkeypatch dharma_transcribe.output.CORRECTIONS_DIR
+    # alongside the other output dirs. Not referenced in module code itself.
+    CORRECTIONS_DIR,  # noqa: F401
     CORRECTIONS_FILE,
     JSON_DIR,
     REVIEW_DIR,
@@ -37,7 +40,7 @@ def _format_timestamp_vtt(seconds: float) -> str:
 def load_corrections() -> dict:
     """Load the corrections dictionary."""
     if CORRECTIONS_FILE.exists():
-        return json.loads(CORRECTIONS_FILE.read_text())
+        return cast(dict, json.loads(CORRECTIONS_FILE.read_text()))
     return {"corrections": []}
 
 

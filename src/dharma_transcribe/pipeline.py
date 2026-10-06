@@ -7,6 +7,7 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 from .align import align_transcript
 from .config import MANIFEST_FILE
@@ -28,7 +29,7 @@ def load_manifest() -> dict:
         Manifest dict with 'files' mapping and 'last_updated' timestamp.
     """
     if MANIFEST_FILE.exists():
-        return json.loads(MANIFEST_FILE.read_text())
+        return cast(dict, json.loads(MANIFEST_FILE.read_text()))
     return {"files": {}, "last_updated": None}
 
 

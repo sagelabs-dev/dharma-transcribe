@@ -73,7 +73,7 @@ def align_transcript(transcript: dict, wav_path: str, hf_token: str = "") -> dic
     except Exception as e:
         print(f"  [stage3] Alignment failed: {e}", flush=True)
         transcript["aligned"] = False
-        warnings.warn(f"Alignment failed for {wav_path}: {e}")
+        warnings.warn(f"Alignment failed for {wav_path}: {e}", stacklevel=2)
 
     # Free alignment model
     del model_a

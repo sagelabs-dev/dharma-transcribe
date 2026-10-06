@@ -15,6 +15,7 @@ Token budgeting:
 import json
 import logging
 import re
+from typing import cast
 from urllib.parse import urlparse
 
 import tiktoken
@@ -136,7 +137,7 @@ def _parse_json_response(content: str) -> dict | None:
     if match:
         clean = match.group(0)
     try:
-        return json.loads(clean)
+        return cast(dict, json.loads(clean))
     except json.JSONDecodeError:
         return None
 
@@ -232,3 +233,79 @@ def llm_correct_transcript(transcript: dict) -> dict:
 
     logger.info("Starting LLM correction with %s (%d segments)", LLM_MODEL, len(segments))
     print(f"  [stage6] LLM correction with {LLM_MODEL} ({len(segments)} segments)...", flush=True)
+
+    corrections_log: list[dict] = []
+    high_conf = 0
+    low_conf = 0
+    errors = 0
+
+    for i, seg in enumerate(segments):
+        seg_text = seg.get("text", "")
+        if len(seg_text.strip()) < 3:
+            continue
+
+        prev_text = segments[i - 1].get("text", "") if i > 0 else ""
+        next_text = segments[i + 1].get("text", "") if i < len(segments) - 1 else ""
+
+        result = correct_segment(seg, prev_text, next_text)
+
+        corrected = result.get("corrected", seg_text)
+        confidence = result.get("confidence", "none")
+        changes = result.get("changes", [])
+
+        if corrected != seg_text and confidence == "high":
+            seg["text_pre_llm"] = seg_text
+            seg["text"] = corrected
+            seg["llm_corrected"] = True
+            seg["llm_confidence"] = confidence
+            high_conf += 1
+            corrections_log.append(
+                {
+                    "segment_id": i,
+                    "original": seg_text,
+                    "corrected": corrected,
+                    "changes": changes,
+                    "confidence": confidence,
+                }
+            )
+        elif confidence == "low":
+            seg["llm_suggestion"] = corrected
+            seg["llm_confidence"] = confidence
+            low_conf += 1
+            corrections_log.append(
+                {
+                    "segment_id": i,
+                    "original": seg_text,
+                    "suggested": corrected,
+                    "changes": changes,
+                    "confidence": confidence,
+                }
+            )
+        elif "error" in result:
+            errors += 1
+            corrections_log.append(
+                {
+                    "segment_id": i,
+                    "original": seg_text,
+                    "error": result["error"],
+                }
+            )
+
+        if (i + 1) % 50 == 0:
+            print(f"  [stage6] Processed {i + 1}/{len(segments)}...", flush=True)
+
+    transcript["llm_correction"] = {
+        "model": LLM_MODEL,
+        "api": _api_label(),
+        "segments_processed": len(segments),
+        "high_confidence_corrections": high_conf,
+        "low_confidence_suggestions": low_conf,
+        "errors": errors,
+    }
+    transcript["llm_corrections_log"] = corrections_log
+
+    print(
+        f"  [stage6] Done: {high_conf} high-conf, {low_conf} low-conf, {errors} errors", flush=True
+    )
+
+    return transcript
